@@ -124,3 +124,119 @@ wg-quick up wg0
 
 # 设置开机启动
 systemctl enable wg-quick@wg0
+
+# 定义修改端口号，适合已经安装WireGuard而不想改端口
+port=9999
+mtu=1420
+ip_list=(2 5 8 178 186 118 158 198 168 9)
+
+#定义文字颜色
+Green="\033[32m"  && Red="\033[31m" && GreenBG="\033[42;37m" && RedBG="\033[41;37m" && Font="\033[0m"
+
+#定义提示信息
+Info="${Green}[信息]${Font}"  &&  OK="${Green}[OK]${Font}"  &&  Error="${Red}[错误]${Font}"
+
+# 检查是否安装 WireGuard
+if [ ! -f '/usr/bin/wg' ]; then
+    clear
+    echo -e "${RedBG}   一键安装 WireGuard 脚本 For Debian_9 Ubuntu Centos_7   ${Font}"
+    echo -e "${GreenBG}     开源项目：https://github.com/hongwenjun/vps_setup    ${Font}"
+    help_info
+    echo -e "${Red}::  检测到你的vps没有安装wireguard，请选择复制一键脚本安装   ${Font}"
+    exit 1
+fi
+
+host=$(hostname -s)
+# 获得服务器ip，自动获取
+if [ ! -f '/usr/bin/curl' ]; then
+    apt update && apt install -y curl
+fi
+serverip=$(curl -4 ip.sb)
+
+# 安装二维码插件
+if [ ! -f '/usr/bin/qrencode' ]; then
+    apt -y install qrencode
+fi
+
+
+# wg配置文件目录 /etc/wireguard
+mkdir -p /etc/wireguard
+chmod 777 -R /etc/wireguard
+cd /etc/wireguard
+
+# 然后开始生成 密匙对(公匙+私匙)。
+wg genkey | tee sprivatekey | wg pubkey > spublickey
+wg genkey | tee cprivatekey | wg pubkey > cpublickey
+
+# 生成服务端配置文件
+cat <<EOF >wg0.conf
+[Interface]
+PrivateKey = $(cat sprivatekey)
+Address = 10.0.0.1/24 
+Address = fd10：db31：203：ab31 :: 1/64 
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+ListenPort = $port
+DNS = 8.8.8.8, 2001：4860：4860 :: 8888 
+MTU = $mtu
+[Peer]
+PublicKey = $(cat cpublickey)
+AllowedIPs = 10.0.0.188/32 
+AllowedIPs = fd10：db31：203：ab31 :: 2
+EOF
+
+# 生成简洁的客户端配置
+cat <<EOF >client.conf
+[Interface]
+PrivateKey = $(cat cprivatekey)
+Address = 10.0.0.188/24
+Address = fd10:db31:203:ab31::2/64
+DNS = 8.8.8.8, 2001：4860：4860 :: 8888
+#  MTU = $mtu
+#  PreUp =  start   .\route\routes-up.bat
+#  PostDown = start  .\route\routes-down.bat
+[Peer]
+PublicKey = $(cat spublickey)
+Endpoint = $serverip:$port
+AllowedIPs = 0.0.0.0/0, ::0/0
+PersistentKeepalive = 25
+EOF
+
+# 添加 2-9 号多用户配置
+for i in {2..9}
+do
+    ip=10.0.0.${ip_list[$i]}
+    ip6=fd10:db31:203:ab31::${ip_list[$i]}
+    wg genkey | tee cprivatekey | wg pubkey > cpublickey
+
+    cat <<EOF >>wg0.conf
+[Peer]
+PublicKey = $(cat cpublickey)
+AllowedIPs = $ip/32
+AllowedIPs = $ip6/64
+EOF
+
+    cat <<EOF >wg_${host}_$i.conf
+[Interface]
+PrivateKey = $(cat cprivatekey)
+Address = $ip/24
+Address = $ip6/64
+DNS = 8.8.8.8, 2001:4860:4860::8888
+[Peer]
+PublicKey = $(cat spublickey)
+Endpoint = $serverip:$port
+AllowedIPs = 0.0.0.0/0, ::0/0
+PersistentKeepalive = 25
+EOF
+    cat /etc/wireguard/wg_${host}_$i.conf| qrencode -o wg_${host}_$i.png
+done
+
+#  vps网卡如果不是eth0，修改成实际网卡
+ni=$(ls /sys/class/net | awk {print} | grep -e eth. -e ens. -e venet.)
+if [ $ni != "eth0" ]; then
+    sed -i "s/eth0/${ni}/g"  /etc/wireguard/wg0.conf
+fi
+
+# 重启wg服务器
+wg-quick down wg0
+wg-quick up wg0
