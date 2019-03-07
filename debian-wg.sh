@@ -117,6 +117,7 @@ lsmod | grep bbr
 echo 1 > /proc/sys/net/ipv4/ip_forward
 echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
 echo "net.ipv6.conf.all.forwarding = 1" >> /etc/sysctl.conf
+echo "net.ipv6.conf.default.accept_ra=2" >> /etc/sysctl.conf
 sysctl -p
 
 # 启动WireGuard
@@ -173,16 +174,16 @@ cat <<EOF >wg0.conf
 [Interface]
 PrivateKey = $(cat sprivatekey)
 Address = 10.0.0.1/24 
-Address = fd10：db31：203：ab31 :: 1/64 
+Address = fd10:db31:203:ab31::1/64 
 PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
 ListenPort = $port
-DNS = 8.8.8.8, 2001：4860：4860 :: 8888 
+DNS = 8.8.8.8, 2001:4860:4860::8888 
 MTU = $mtu
+SaveConfig = true 
 [Peer]
 PublicKey = $(cat cpublickey)
-AllowedIPs = 10.0.0.188/32 
-AllowedIPs = fd10：db31：203：ab31 :: 2
+AllowedIPs = 10.0.0.188/32, fd10:db31:203:ab31::2
 EOF
 
 # 生成简洁的客户端配置
@@ -191,7 +192,7 @@ cat <<EOF >client.conf
 PrivateKey = $(cat cprivatekey)
 Address = 10.0.0.188/24
 Address = fd10:db31:203:ab31::2/64
-DNS = 8.8.8.8, 2001：4860：4860 :: 8888
+DNS = 8.8.8.8, 2001:4860:4860::8888
 #  MTU = $mtu
 #  PreUp =  start   .\route\routes-up.bat
 #  PostDown = start  .\route\routes-down.bat
@@ -212,8 +213,7 @@ do
     cat <<EOF >>wg0.conf
 [Peer]
 PublicKey = $(cat cpublickey)
-AllowedIPs = $ip/32
-AllowedIPs = $ip6/64
+AllowedIPs = $ip/32, $ip6
 EOF
 
     cat <<EOF >wg_${host}_$i.conf
