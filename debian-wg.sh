@@ -69,7 +69,7 @@ MTU = 1420
 # 公匙，自动读取上面刚刚生成的密匙内容
 PublicKey = $(cat cpublickey)
 # VPN内网IP范围，一般默认即可，除非和你服务器或客户端设备本地网段冲突
-AllowedIPs = 10.0.0.2/32, fd10:db31:203:ab31::1/64" > wg0.conf
+AllowedIPs = 10.0.0.2/32, fd10:db31:203:ab31::2/64" > wg0.conf
 
 # 生成客户端配置文件
 echo "[Interface]
@@ -126,6 +126,9 @@ wg-quick up wg0
 # 设置开机启动
 systemctl enable wg-quick@wg0
 
+# 查询WireGuard状态
+wg
+
 # 定义修改端口号，适合已经安装WireGuard而不想改端口
 port=9999
 mtu=1420
@@ -180,7 +183,6 @@ PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING 
 ListenPort = $port
 DNS = 8.8.8.8, 2001:4860:4860::8888 
 MTU = $mtu
-SaveConfig = true 
 [Peer]
 PublicKey = $(cat cpublickey)
 AllowedIPs = 10.0.0.188/32, fd10:db31:203:ab31::2
