@@ -67,7 +67,6 @@ if [[ $# > 0 ]];then
 	esac
 else
 	wireguard_install
-fi
 
 # 定义修改端口号，适合已经安装WireGuard而不想改端口
 port=9999
@@ -182,3 +181,5 @@ fi
 # 重启wg服务器
 wg-quick down wg0
 wg-quick up wg0
+
+fi
