@@ -45,18 +45,17 @@ wireguard_install(){
     echo "net.ipv6.conf.all.forwarding = 1" >> /etc/sysctl.conf
     echo "net.ipv6.conf.default.accept_ra=2" >> /etc/sysctl.conf
 
-    mkdir -p /etc/wireguard
-    cd /etc/wireguard
-    wg genkey | tee sprivatekey | wg pubkey > spublickey
-    wg genkey | tee cprivatekey | wg pubkey > cpublickey
-    
     firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.0.0.0/24 masquerade'
     firewall-cmd --permanent --direct --add-rule ipv4 filter FORWARD 0 -i wg0 -o eth0 -j ACCEPT
     firewall-cmd --permanent --add-rich-rule='rule family=ipv6 source address=fd10:db31:203:ab31::1/64 masquerade'
     firewall-cmd --permanent --direct --add-rule ipv6 filter FORWARD 0 -i wg0 -o eth0 -j ACCEPT
     firewall-cmd --permanent --add-port=9999/udp
     firewall-cmd --reload
-    
+
+    mkdir -p /etc/wireguard
+    cd /etc/wireguard
+    wg genkey | tee sprivatekey | wg pubkey > spublickey
+    wg genkey | tee cprivatekey | wg pubkey > cpublickey
     chmod 777 -R /etc/wireguard
     systemctl enable wg-quick@wg0
 }
