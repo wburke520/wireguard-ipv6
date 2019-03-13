@@ -5,3 +5,6 @@
 debian系统一键安装wireguard带IPv6脚本
 
 wget -qO- git.io/fhhea | bash
+
+ubuntu系统一键安装wireguard带IPV6脚本
+wget -qO- git.io/fhjAT | bash
