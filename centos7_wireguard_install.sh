@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Centos 安装脚本源  https://github.com/atrandys/wireguard
-
 #判断系统
 if [ ! -e '/etc/redhat-release' ]; then
 echo "仅支持centos7"
@@ -40,11 +38,8 @@ wireguard_install(){
     curl -Lo /etc/yum.repos.d/wireguard.repo https://copr.fedorainfracloud.org/coprs/jdoss/wireguard/repo/epel-7/jdoss-wireguard-epel-7.repo
     yum install -y epel-release
     yum install -y wireguard-dkms wireguard-tools
-    yum -y install qrencode iptables-services
+    
 
-    systemctl stop firewalld  && systemctl disable firewalld
-    systemctl enable iptables && systemctl start iptables
-    iptables -F  && service iptables save && service iptables restart
     echo 1 > /proc/sys/net/ipv4/ip_forward
     echo "net.ipv4.ip_forward = 1" > /etc/sysctl.conf
     echo "net.ipv6.conf.all.forwarding = 1" >> /etc/sysctl.conf
@@ -54,6 +49,14 @@ wireguard_install(){
     cd /etc/wireguard
     wg genkey | tee sprivatekey | wg pubkey > spublickey
     wg genkey | tee cprivatekey | wg pubkey > cpublickey
+    
+    firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address=10.0.0.0/24 masquerade'
+    firewall-cmd --permanent --direct --add-rule ipv4 filter FORWARD 0 -i wg0 -o eth0 -j ACCEPT
+    firewall-cmd --permanent --add-rich-rule='rule family=ipv6 source address=fd10:db31:203:ab31::1/64 masquerade'
+    firewall-cmd --permanent --direct --add-rule ipv6 filter FORWARD 0 -i wg0 -o eth0 -j ACCEPT
+    firewall-cmd --permanent --add-port=9999/udp
+    firewall-cmd --reload
+    
     chmod 777 -R /etc/wireguard
     systemctl enable wg-quick@wg0
 }
@@ -115,10 +118,7 @@ wg genkey | tee cprivatekey | wg pubkey > cpublickey
 cat <<EOF >wg0.conf
 [Interface]
 PrivateKey = $(cat sprivatekey)
-Address = 10.0.0.1/24 
-Address = fd10:db31:203:ab31::1/64 
-PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE; ip6tables -A FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE; ip6tables -D FORWARD -i wg0 -j ACCEPT; ip6tables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+Address = 10.0.0.1/24, fd10:db31:203:ab31::1/64 
 ListenPort = $port
 DNS = 8.8.8.8, 2001:4860:4860::8888 
 MTU = $mtu
