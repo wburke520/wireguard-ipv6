@@ -12,4 +12,8 @@ wget -qO- git.io/fhjAT | bash
 
 centOS系统一键安装wireguard带IPV6脚本
 
-wget -qO- git.io/fhjAm | bash
+目前centOS7需要升级系统内核，因此首先使用命令升级系统内核，在使用一键安装脚本
+
+wget -qO wg.sh git.io/fhnhS && bash wg.sh kernel   # Centos 升级内核命令
+
+wget -qO- git.io/fhjAm | bash                      # wireguard带IPv6一键脚本
