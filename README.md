@@ -10,7 +10,7 @@ ubuntu系统一键安装wireguard带IPV6脚本
 
 wget -qO- git.io/fhjAT | bash
 
-centOS系统一键安装wireguard带IPV6脚本
+centOS系统一键安装wireguard带IPV6脚本(在Vultr上测试通过）
 
 目前centOS7需要升级系统内核，因此首先使用命令升级系统内核，在使用一键安装脚本，如果系统安装wget,使用yum install wget进行安装。
 
